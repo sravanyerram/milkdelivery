@@ -95,7 +95,7 @@ function ClientRow({
             product_name: type,
             quantity,
             total_cost,
-        });
+        }, "admin");
         await recalcInvoice(client.uid, month);
         setSaved(true);
         setTimeout(() => { setSaved(false); onLogged(); }, 1200);
@@ -354,7 +354,7 @@ export default function AdminClientsPage() {
                 product_name: defaultTypeName,
                 quantity,
                 total_cost,
-            });
+            }, "admin");
             await recalcInvoice(client.uid, month);
         }));
         setBulkLogging(false);

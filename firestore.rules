@@ -56,5 +56,11 @@ service cloud.firestore {
       allow update, delete: if isAdmin() ||
         (isSignedIn() && resource.data.client_uid == request.auth.uid);
     }
+
+    // ── Settings (admin threshold etc.) ──────────────────────────────────
+    match /settings/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
   }
 }

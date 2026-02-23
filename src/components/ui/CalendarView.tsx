@@ -76,9 +76,9 @@ export function CalendarView({
                     const isRequest = delivered && isFuture(startOfDay(day));
 
                     let cls = "relative flex items-center justify-center rounded-xl h-9 text-sm font-medium transition-all duration-150 cursor-pointer ";
-                    if (isRequest) cls += "bg-amber-500/25 text-amber-300 border border-amber-500/40 ";
+                    if (vacation) cls += "bg-red-500/20 text-red-300 border border-red-500/30 ";
+                    else if (isRequest) cls += "bg-amber-500/25 text-amber-300 border border-amber-500/40 ";
                     else if (delivered) cls += "bg-green-500/25 text-green-300 border border-green-500/40 ";
-                    else if (vacation) cls += "bg-red-500/20 text-red-300 border border-red-500/30 ";
                     else if (today) cls += "bg-blue-500/20 text-blue-300 border border-blue-500/40 ";
                     else cls += "text-white/60 hover:bg-white/10 ";
                     if (selected) cls += "ring-2 ring-blue-400 ";

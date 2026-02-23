@@ -1,0 +1,75 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "deliveries",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "client_uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "date",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "deliveries",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "date",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "confirmed",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "deliveries",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "disputed",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "date",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "invoices",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "client_uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "month_year",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "vacations",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "client_uid",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "start_date",
+                    "order": "ASCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

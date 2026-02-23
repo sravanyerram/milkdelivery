@@ -29,6 +29,7 @@ export interface UserDoc {
     address?: string;
     defaultProduct?: string; // product id
     defaultQty?: number;
+    defaultChangedAt?: Timestamp; // audit: last time default was changed
     createdAt?: Timestamp;
 }
 
@@ -44,14 +45,18 @@ export interface DeliveryDoc {
     date: string; // "YYYY-MM-DD"
     product_id: string;
     product_name: string;
-    quantity: number; // litres (admin/system logged)
+    quantity: number;
     total_cost: number;
     createdAt?: Timestamp;
+    // ── Handshake / confirmation ──────────────────────────────────────────
+    source?: "client" | "admin"; // who created this entry
+    confirmed?: boolean;          // true = admin confirmed physical delivery
+    confirmedAt?: Timestamp;      // when admin confirmed
     // ── Dispute fields ───────────────────────────────────────────────────
-    disputed?: boolean;               // client raised a dispute
-    client_quantity?: number;         // what the client claims was delivered
+    disputed?: boolean;
+    client_quantity?: number;
     dispute_status?: "Pending" | "Approved" | "Rejected";
-    dispute_note?: string;            // optional context from client
+    dispute_note?: string;
 }
 
 export interface InvoiceDoc {
@@ -140,19 +145,25 @@ export async function seedProducts() {
 
 // ── Deliveries ────────────────────────────────────────────────────────────────
 
-export async function logDelivery(data: Omit<DeliveryDoc, "id">) {
-    // Query by client_uid (a field the client CAN read per security rules).
-    // Filter by date in JS — avoids both composite-index and permissions issues.
+export async function logDelivery(
+    data: Omit<DeliveryDoc, "id">,
+    source: "client" | "admin" = "client"
+) {
     const q = query(
         collection(db, "deliveries"),
         where("client_uid", "==", data.client_uid)
     );
     const snap = await getDocs(q);
     const existing = snap.docs.find((d) => d.data().date === data.date);
+    const extra = {
+        source,
+        confirmed: source === "admin",
+        ...(source === "admin" ? { confirmedAt: serverTimestamp() } : {}),
+    };
     if (existing) {
-        await updateDoc(existing.ref, { ...data, createdAt: serverTimestamp() });
+        await updateDoc(existing.ref, { ...data, ...extra, createdAt: serverTimestamp() });
     } else {
-        await addDoc(collection(db, "deliveries"), { ...data, createdAt: serverTimestamp() });
+        await addDoc(collection(db, "deliveries"), { ...data, ...extra, createdAt: serverTimestamp() });
     }
 }
 
@@ -229,7 +240,43 @@ export async function setClientDefault(
     defaultProduct: string,
     defaultQty: number
 ): Promise<void> {
-    await updateUser(uid, { defaultProduct, defaultQty });
+    await updateUser(uid, { defaultProduct, defaultQty, defaultChangedAt: serverTimestamp() as Timestamp });
+}
+
+/** Admin confirms a physical delivery was made (handshake). Creates doc if not exists. */
+export async function confirmDelivery(
+    delivery: {
+        id?: string;
+        client_uid: string;
+        date: string;
+        product_id: string;
+        product_name: string;
+        quantity: number;
+        total_cost: number;
+    }
+): Promise<void> {
+    const confirmation = {
+        confirmed: true,
+        confirmedAt: serverTimestamp(),
+        source: "admin" as const,
+    };
+    if (delivery.id) {
+        await updateDoc(doc(db, "deliveries", delivery.id), confirmation);
+    } else {
+        // No delivery doc yet — create one
+        const q = query(collection(db, "deliveries"), where("client_uid", "==", delivery.client_uid));
+        const snap = await getDocs(q);
+        const existing = snap.docs.find((d) => d.data().date === delivery.date);
+        if (existing) {
+            await updateDoc(existing.ref, confirmation);
+        } else {
+            await addDoc(collection(db, "deliveries"), {
+                ...delivery,
+                ...confirmation,
+                createdAt: serverTimestamp(),
+            });
+        }
+    }
 }
 
 export async function getTodayDeliveriesAdmin(
@@ -291,16 +338,17 @@ export async function upsertInvoice(
 }
 
 /**
- * Recalculates an invoice total from the source-of-truth (all deliveries for
- * that month) and saves it. Always call this after logging a delivery instead
- * of passing individual delivery costs to upsertInvoice directly.
+ * Recalculates an invoice from confirmed deliveries for that month.
+ * confirmed !== false means: true (admin confirmed) OR undefined (legacy data without the field).
  */
 export async function recalcInvoice(
     client_uid: string,
     month_year: string
 ): Promise<void> {
     const deliveries = await getDeliveriesForClient(client_uid, month_year);
-    const total = deliveries.reduce((sum, d) => sum + d.total_cost, 0);
+    // Only count deliveries that are admin-confirmed or legacy (no confirmed field)
+    const billable = deliveries.filter((d) => d.confirmed !== false);
+    const total = billable.reduce((sum, d) => sum + d.total_cost, 0);
     await upsertInvoice(client_uid, month_year, total);
 }
 
@@ -357,4 +405,24 @@ export async function getVacationsForClient(
 export async function getAllVacations(): Promise<VacationDoc[]> {
     const snap = await getDocs(collection(db, "vacations"));
     return snap.docs.map((d) => ({ id: d.id, ...d.data() } as VacationDoc));
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+
+export async function getAdminSetting<T>(
+    key: string,
+    defaultValue: T
+): Promise<T> {
+    const ref = doc(db, "settings", key);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return defaultValue;
+    return snap.data()?.value as T;
+}
+
+export async function setAdminSetting<T>(
+    key: string,
+    value: T
+): Promise<void> {
+    const ref = doc(db, "settings", key);
+    await setDoc(ref, { value }, { merge: true });
 }

@@ -6,8 +6,8 @@ import {
     getTodayDeliveriesAdmin,
     getAllInvoices,
     getAllVacations,
-    getDisputedDeliveries,
     resolveDeliveryDispute,
+    getPendingUsers,
     getProducts,
     getAllUsers,
     InvoiceDoc,
@@ -16,8 +16,11 @@ import {
     ProductDoc,
     UserDoc,
 } from "@/lib/firestore";
-import { Activity, Milk, TrendingUp, AlertCircle, Plus, CalendarDays, Users, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Activity, Milk, TrendingUp, AlertCircle, Plus, CalendarDays, Users, AlertTriangle, CheckCircle, XCircle, Bell } from "lucide-react";
 import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
 
 export default function AdminDashboardPage() {
     const today = format(new Date(), "yyyy-MM-dd");
@@ -28,31 +31,49 @@ export default function AdminDashboardPage() {
     const [disputes, setDisputes] = useState<DeliveryDoc[]>([]);
     const [products, setProducts] = useState<ProductDoc[]>([]);
     const [clientsMap, setClientsMap] = useState<Record<string, UserDoc>>({});
+    const [pendingCount, setPendingCount] = useState(0);
+    const [recentDefaultChanges, setRecentDefaultChanges] = useState<UserDoc[]>([]);
     const [loading, setLoading] = useState(true);
     const [resolvingId, setResolvingId] = useState<string | null>(null);
 
+    // One-time data load (stats, invoices, vacations)
     const load = useCallback(async () => {
-        const [todayDels, invoices, vacs, disputed, prods, users] = await Promise.all([
+        const [todayDels, invoices, vacs, prods, users, pending] = await Promise.all([
             getTodayDeliveriesAdmin(today),
             getAllInvoices(),
             getAllVacations(),
-            getDisputedDeliveries(),
             getProducts(),
             getAllUsers(),
+            getPendingUsers(),
         ]);
         setTodayLitres(todayDels.reduce((s, d) => s + d.quantity, 0));
         setTodayRevenue(todayDels.reduce((s, d) => s + d.total_cost, 0));
         setPendingInvoices(invoices.filter((i) => i.status === "Pending"));
         setVacations(vacs.filter((v) => today >= v.start_date && today <= v.end_date));
-        setDisputes(disputed);
         setProducts(prods);
+        setPendingCount(pending.length);
         const map: Record<string, UserDoc> = {};
         users.forEach((u) => { map[u.uid] = u; });
         setClientsMap(map);
+        // Clients who changed default in last 24h
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const changed = users.filter((u) =>
+            u.defaultChangedAt && u.defaultChangedAt.toDate() > yesterday
+        );
+        setRecentDefaultChanges(changed);
         setLoading(false);
     }, [today]);
 
     useEffect(() => { load(); }, [load]);
+
+    // Real-time listener for disputes
+    useEffect(() => {
+        const q = query(collection(db, "deliveries"), where("disputed", "==", true));
+        const unsub = onSnapshot(q, (snap) => {
+            setDisputes(snap.docs.map((d) => ({ id: d.id, ...d.data() } as DeliveryDoc)));
+        });
+        return unsub;
+    }, []);
 
     const handleResolve = async (delivery: DeliveryDoc, approve: boolean) => {
         setResolvingId(delivery.id ?? null);
@@ -86,15 +107,47 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Action Required */}
-            {(pendingInvoices.length > 0) && (
+            {(pendingInvoices.length > 0 || pendingCount > 0) && (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 space-y-2">
                     <p className="text-amber-400 text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
                         <AlertCircle className="w-4 h-4" /> Action Required
                     </p>
-                    <Link href="/admin/revenue" className="flex items-center justify-between hover:bg-white/5 rounded-xl p-2 transition-colors group">
-                        <span className="text-white/70 text-sm">{pendingInvoices.length} Payment{pendingInvoices.length > 1 ? "s" : ""} Pending Confirmation</span>
-                        <span className="text-amber-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
-                    </Link>
+                    {pendingInvoices.length > 0 && (
+                        <Link href="/admin/revenue" className="flex items-center justify-between hover:bg-white/5 rounded-xl p-2 transition-colors group">
+                            <span className="text-white/70 text-sm">{pendingInvoices.length} Payment{pendingInvoices.length > 1 ? "s" : ""} Pending Confirmation</span>
+                            <span className="text-amber-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
+                        </Link>
+                    )}
+                    {pendingCount > 0 && (
+                        <Link href="/admin/users" className="flex items-center justify-between hover:bg-white/5 rounded-xl p-2 transition-colors group">
+                            <span className="text-white/70 text-sm">{pendingCount} new user{pendingCount > 1 ? "s" : ""} awaiting approval</span>
+                            <span className="text-amber-400 text-xs group-hover:translate-x-0.5 transition-transform">→</span>
+                        </Link>
+                    )}
+                </div>
+            )}
+
+            {/* Recent Default Changes — audit trail */}
+            {recentDefaultChanges.length > 0 && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 space-y-2">
+                    <p className="text-blue-400 text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                        <Bell className="w-4 h-4" /> Default Changes (last 24h)
+                    </p>
+                    {recentDefaultChanges.map((u) => (
+                        <div key={u.uid} className="flex items-center justify-between px-2 py-1.5 rounded-xl hover:bg-white/5">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-300 text-xs font-bold">
+                                    {u.name.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="text-white/70 text-sm">{u.name}</span>
+                            </div>
+                            <span className="text-white/30 text-xs">
+                                {u.defaultQty}L {u.defaultProduct ? "custom" : "Buffalo"} ·{" "}
+                                {u.defaultChangedAt ? formatDistanceToNow(u.defaultChangedAt.toDate(), { addSuffix: true }) : ""}
+                            </span>
+                        </div>
+                    ))}
+                    <p className="text-white/25 text-xs px-2">Check the Reports page to see if procurement needs updating.</p>
                 </div>
             )}
 

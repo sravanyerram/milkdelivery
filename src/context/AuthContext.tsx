@@ -41,7 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!existing) {
                 const newUser: UserDoc = {
                     uid: firebaseUser.uid,
-                    name: firebaseUser.displayName ?? "Unknown",
+                    name: firebaseUser.displayName
+                        ?? firebaseUser.email?.split("@")[0]
+                        ?? "User",
                     email: firebaseUser.email ?? "",
                     role: isAdminEmail ? "Admin" : "Client",
                     status: isAdminEmail ? "Approved" : "Pending",

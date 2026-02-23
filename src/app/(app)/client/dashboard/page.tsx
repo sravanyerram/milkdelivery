@@ -51,8 +51,15 @@ function DayPanel({
     onClose: () => void;
 }) {
     const vacation = !!vacationRecord;
-    const [type, setType] = useState<string>(delivery?.product_name ?? "Buffalo");
-    const [qty, setQty] = useState<string>(delivery ? `${delivery.quantity.toFixed(1)}L` : "1.0L");
+
+    // Compute effective defaults from userDoc
+    const defaultTypeName = userDoc?.defaultProduct
+        ? (products.find((p) => p.id === userDoc.defaultProduct)?.name ?? "Buffalo")
+        : "Buffalo";
+    const defaultQtyStr = userDoc?.defaultQty ? `${userDoc.defaultQty.toFixed(1)}L` : "1.0L";
+
+    const [type, setType] = useState<string>(delivery?.product_name ?? defaultTypeName);
+    const [qty, setQty] = useState<string>(delivery ? `${delivery.quantity.toFixed(1)}L` : defaultQtyStr);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
@@ -68,13 +75,14 @@ function DayPanel({
     const [defaultDone, setDefaultDone] = useState(false);
 
     useEffect(() => {
-        setType(delivery?.product_name ?? "Buffalo");
-        setQty(delivery ? `${delivery.quantity.toFixed(1)}L` : "1.0L");
+        setType(delivery?.product_name ?? defaultTypeName);
+        setQty(delivery ? `${delivery.quantity.toFixed(1)}L` : defaultQtyStr);
         setDisputeQty(`${(delivery?.quantity ?? 1).toFixed(1)}L`);
         setShowDispute(false);
         setSaved(false);
         setDisputeDone(false);
         setDefaultDone(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [delivery, date]);
 
     const handleSave = async () => {
@@ -102,6 +110,7 @@ function DayPanel({
         await onSetDefault(type, qty_num, product?.id ?? "");
         setSettingDefault(false);
         setDefaultDone(true);
+        setTimeout(() => onClose(), 1200);
     };
 
     const dateStr = format(date, "EEEE, d MMMM");
@@ -121,8 +130,8 @@ function DayPanel({
                     <div className="flex items-start justify-between">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <CalendarDays className="w-4 h-4 text-blue-400" />
-                                <p className="text-blue-300 text-sm font-medium">{dateStr}</p>
+                                <CalendarDays className="w-5 h-5 text-white/70" />
+                                <p className="text-white text-sm font-semibold">{dateStr}</p>
                             </div>
                             {vacation ? (
                                 <div className="space-y-1">
@@ -398,12 +407,13 @@ export default function ClientDashboardPage() {
                 <DayPanel
                     date={selectedDate}
                     delivery={selectedDelivery}
-                    vacation={selectedVacation}
+                    vacationRecord={selectedVacationRecord}
                     products={products}
                     userDoc={userDoc}
                     onSave={handleSaveEntry}
                     onDispute={handleDispute}
                     onSetDefault={handleSetDefault}
+                    onCancelVacation={handleCancelVacation}
                     onClose={() => setSelectedDate(null)}
                 />
             )}
