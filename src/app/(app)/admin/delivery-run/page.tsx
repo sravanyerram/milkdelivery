@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import {
     getApprovedClients,
     getAllVacations,
-    getTodayDeliveriesAdmin,
     getProducts,
     confirmDelivery,
     recalcInvoice,
@@ -14,6 +13,8 @@ import {
     DeliveryDoc,
     ProductDoc,
 } from "@/lib/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { ChipSelector } from "@/components/ui/ChipSelector";
 import {
     Truck, CheckCircle, PlaneLanding, Milk,
@@ -170,38 +171,52 @@ function ClientRunRow({
 
 export default function DeliveryRunPage() {
     const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
-    const [statuses, setStatuses] = useState<ClientStatus[]>([]);
+    const [clients, setClients] = useState<UserDoc[]>([]);
+    const [vacations, setVacations] = useState<VacationDoc[]>([]);
+    const [deliveries, setDeliveries] = useState<DeliveryDoc[]>([]);
     const [products, setProducts] = useState<ProductDoc[]>([]);
     const [loading, setLoading] = useState(true);
     const [confirmingAll, setConfirmingAll] = useState(false);
 
-    const load = useCallback(async () => {
-        setLoading(true);
-        const [clients, vacations, deliveries, prods] = await Promise.all([
+    // Load static data (clients, vacations, products) when date changes
+    const loadStatic = useCallback(async () => {
+        const [cls, vacs, prods] = await Promise.all([
             getApprovedClients(),
             getAllVacations(),
-            getTodayDeliveriesAdmin(selectedDate),
             getProducts(),
         ]);
+        setClients(cls.sort((a, b) => a.name.localeCompare(b.name)));
+        setVacations(vacs);
         setProducts(prods);
+    }, []);
 
-        const result: ClientStatus[] = clients
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((client) => ({
-                client,
-                delivery: deliveries.find((d: DeliveryDoc) => d.client_uid === client.uid) ?? null,
-                onVacation: vacations.some(
-                    (v: VacationDoc) => v.client_uid === client.uid
-                        && selectedDate >= v.start_date
-                        && selectedDate <= v.end_date
-                ),
-            }));
+    useEffect(() => { loadStatic(); }, [loadStatic]);
 
-        setStatuses(result);
-        setLoading(false);
+    // Live deliveries via onSnapshot — admin sees client requests in real-time
+    useEffect(() => {
+        setLoading(true);
+        const q = query(collection(db, "deliveries"), where("date", "==", selectedDate));
+        const unsub = onSnapshot(q, (snap) => {
+            setDeliveries(snap.docs.map((d) => ({ id: d.id, ...d.data() } as DeliveryDoc)));
+            setLoading(false);
+        }, () => setLoading(false));
+        return unsub;
     }, [selectedDate]);
 
-    useEffect(() => { load(); }, [load]);
+    // Compute statuses from live data
+    const statuses: ClientStatus[] = clients.map((client) => ({
+        client,
+        delivery: deliveries.find((d) => d.client_uid === client.uid) ?? null,
+        onVacation: vacations.some(
+            (v) => v.client_uid === client.uid
+                && selectedDate >= v.start_date
+                && selectedDate <= v.end_date
+        ),
+    }));
+
+    // Reload static after confirming so client names stay fresh
+    const load = loadStatic;
+
 
     const confirmed = statuses.filter((s) => !s.onVacation && s.delivery?.confirmed === true);
     const pending = statuses.filter((s) => !s.onVacation && s.delivery?.confirmed !== true);

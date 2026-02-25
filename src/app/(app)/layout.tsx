@@ -13,16 +13,16 @@ import { Milk, LogOut } from "lucide-react";
 import Image from "next/image";
 
 const CLIENT_TABS = [
-    { href: "/client/dashboard", label: "Home", icon: Home },
-    { href: "/client/vacation", label: "Vacation", icon: Plane },
-    { href: "/client/invoices", label: "Invoices", icon: FileText },
+    { href: "/client/dashboard", label: "Dashboard", icon: Home },
+    { href: "/client/vacation", label: "Leave", icon: Plane },
+    { href: "/client/invoices", label: "Bills", icon: FileText },
 ];
 
 const ADMIN_TABS = [
-    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/dashboard", label: "Home", icon: LayoutDashboard },
     { href: "/admin/clients", label: "Clients", icon: Users },
-    { href: "/admin/delivery-run", label: "Run", icon: Truck },
-    { href: "/admin/revenue", label: "Revenue", icon: TrendingUp },
+    { href: "/admin/delivery-run", label: "Delivery", icon: Truck },
+    { href: "/admin/revenue", label: "Finance", icon: TrendingUp },
     { href: "/admin/reports", label: "Reports", icon: BarChart3 },
 ];
 

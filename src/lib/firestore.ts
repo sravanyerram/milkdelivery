@@ -64,6 +64,7 @@ export interface InvoiceDoc {
     client_uid: string;
     month_year: string; // "YYYY-MM"
     total_amount: number;
+    amount_paid?: number;  // cumulative payments confirmed by admin
     status: InvoiceStatus;
     dispute_notes?: DisputeNote[];
     updatedAt?: Timestamp;
@@ -358,6 +359,32 @@ export async function updateInvoiceStatus(
 ) {
     await updateDoc(doc(db, "invoices", invoiceId), {
         status,
+        updatedAt: serverTimestamp(),
+    });
+}
+
+/** Admin confirms payment of a specific amount. Auto-confirms invoice if fully paid. */
+export async function recordPayment(
+    invoiceId: string,
+    amount: number
+): Promise<void> {
+    const ref = doc(db, "invoices", invoiceId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const data = snap.data() as InvoiceDoc;
+    const newPaid = (data.amount_paid ?? 0) + amount;
+    const newStatus: InvoiceStatus = newPaid >= data.total_amount ? "Confirmed" : "Unpaid";
+    await updateDoc(ref, {
+        amount_paid: newPaid,
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+    });
+}
+
+/** Admin declines a payment claim — returns invoice to Unpaid. */
+export async function declinePayment(invoiceId: string): Promise<void> {
+    await updateDoc(doc(db, "invoices", invoiceId), {
+        status: "Unpaid" as InvoiceStatus,
         updatedAt: serverTimestamp(),
     });
 }

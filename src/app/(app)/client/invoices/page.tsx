@@ -49,7 +49,19 @@ function InvoiceCard({ inv, onRefresh, userName }: { inv: InvoiceDoc; onRefresh:
             <div className="flex items-center justify-between p-4">
                 <div>
                     <p className="text-white font-semibold">{monthLabel}</p>
-                    <p className="text-white/50 text-sm">₹{inv.total_amount.toLocaleString("en-IN")}</p>
+                    <p className="text-white/50 text-sm">
+                        Bill: ₹{inv.total_amount.toLocaleString("en-IN")}
+                    </p>
+                    {(inv.amount_paid ?? 0) > 0 && inv.status !== "Confirmed" && (
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-green-400 text-xs">
+                                ✓ Paid: ₹{(inv.amount_paid ?? 0).toLocaleString("en-IN")}
+                            </span>
+                            <span className="text-red-400 text-xs">
+                                Due: ₹{(inv.total_amount - (inv.amount_paid ?? 0)).toLocaleString("en-IN")}
+                            </span>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <StatusBadge status={inv.status} />
@@ -99,8 +111,8 @@ function InvoiceCard({ inv, onRefresh, userName }: { inv: InvoiceDoc; onRefresh:
                                 className={`flex ${note.author === "Client" ? "justify-end" : "justify-start"}`}
                             >
                                 <div className={`max-w-xs px-3 py-2 rounded-xl text-sm ${note.author === "Client"
-                                        ? "bg-blue-500/20 text-blue-200"
-                                        : "bg-white/10 text-white/70"
+                                    ? "bg-blue-500/20 text-blue-200"
+                                    : "bg-white/10 text-white/70"
                                     }`}>
                                     <p className="text-xs opacity-60 mb-0.5">{note.author}</p>
                                     {note.message}
