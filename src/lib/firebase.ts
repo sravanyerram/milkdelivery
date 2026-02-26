@@ -16,3 +16,14 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// --- ADD THIS SECTION START ---
+import { connectAuthEmulator } from "firebase/auth";
+import { connectFirestoreEmulator } from "firebase/firestore";
+
+if (process.env.NEXT_PUBLIC_USE_EMULATOR === 'true') {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  console.log("🚀 Connected to Firebase Emulators");
+}
+// --- ADD THIS SECTION END ---
