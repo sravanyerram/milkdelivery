@@ -30,15 +30,32 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
       
+    - name: Install Firebase Tools & Wait-On
+      run: npm install -g firebase-tools wait-on
+
     - name: Build Next.js App
       run: npm run build
       env:
-        # Add your Firebase config secrets here via GitHub repository settings
-        NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
-        NEXT_PUBLIC_FIREBASE_PROJECT_ID: "milkdelivery-test-env"
+        NEXT_PUBLIC_USE_EMULATOR: "true"
+        NEXT_PUBLIC_ADMIN_EMAIL: "sravan.yerram1988@gmail.com"
+        NEXT_PUBLIC_FIREBASE_API_KEY: "dummy"
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy"
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: "demo-milk"
         
     - name: Run Playwright tests
-      run: npx playwright test
+      run: |
+        # Start Next.js server in the background
+        npm run start &
+        # Wait for it to be ready
+        wait-on http://127.0.0.1:3000
+        # Start Firebase Emulators and run Playwright tests
+        npx firebase emulators:exec --project=demo-milk 'npx playwright test'
+      env:
+        NEXT_PUBLIC_USE_EMULATOR: "true"
+        NEXT_PUBLIC_ADMIN_EMAIL: "sravan.yerram1988@gmail.com"
+        NEXT_PUBLIC_FIREBASE_API_KEY: "dummy"
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "dummy"
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: "demo-milk"
       
     - uses: actions/upload-artifact@v4
       if: always()
