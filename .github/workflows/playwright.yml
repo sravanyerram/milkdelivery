@@ -43,13 +43,7 @@ jobs:
         NEXT_PUBLIC_FIREBASE_PROJECT_ID: "demo-milk"
         
     - name: Run Playwright tests
-      run: |
-        # Start Next.js server in the background
-        npm run start &
-        # Wait for it to be ready
-        wait-on http://127.0.0.1:3000
-        # Start Firebase Emulators and run Playwright tests
-        npx firebase emulators:exec --project=demo-milk 'npx playwright test'
+      run: npx playwright test
       env:
         NEXT_PUBLIC_USE_EMULATOR: "true"
         NEXT_PUBLIC_ADMIN_EMAIL: "sravan.yerram1988@gmail.com"
