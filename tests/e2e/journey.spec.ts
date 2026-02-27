@@ -26,7 +26,7 @@ test('Full Multi-Role User Journey', async ({ browser }) => {
     // STEP 1 & 2: Client Signup & Pending Approval Screen
     // =========================================================================
     await test.step('Client signs up and sees pending screen', async () => {
-        await clientPage.goto('http://localhost:3000/login');
+        await clientPage.goto('http://127.0.0.1:3000/login');
         await clientPage.waitForLoadState('networkidle');
 
         await clientPage.getByRole('button', { name: 'Sign Up', exact: true }).click();
@@ -46,7 +46,7 @@ test('Full Multi-Role User Journey', async ({ browser }) => {
     // STEP 3: Admin logs in and approves client
     // =========================================================================
     await test.step('Admin logs in and approves client', async () => {
-        await adminPage.goto('http://localhost:3000/login');
+        await adminPage.goto('http://127.0.0.1:3000/login');
 
         await adminPage.fill('input[placeholder="Email address"]', adminEmail);
         await adminPage.fill('input[placeholder="Password"]', adminPass);

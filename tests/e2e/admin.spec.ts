@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Admin Experience Mock UI Tests', () => {
 
     test('can access admin login page and see the login form', async ({ page }) => {
-        await page.goto('http://localhost:3000/login');
+        await page.goto('http://127.0.0.1:3000/login');
 
         // Assure we can see the app logo/name
         await expect(page.locator('text=milkdelivery')).toBeVisible();
@@ -16,7 +16,7 @@ test.describe('Admin Experience Mock UI Tests', () => {
 
     test('admin routing protection redirects to login', async ({ page }) => {
         // Without auth, hitting admin/dashboard should redirect to login
-        await page.goto('http://localhost:3000/admin/dashboard');
+        await page.goto('http://127.0.0.1:3000/admin/dashboard');
 
         await expect(page).toHaveURL(/.*\/login/);
     });
