@@ -64,18 +64,10 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: [
-    {
-      command: 'npx cross-env NEXT_PUBLIC_USE_EMULATOR="true" NEXT_PUBLIC_ADMIN_EMAIL="sravan.yerram1988@gmail.com" NEXT_PUBLIC_FIREBASE_API_KEY="dummy" NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="dummy" NEXT_PUBLIC_FIREBASE_PROJECT_ID="demo-milk" npm run start',
-      port: 3000,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000,
-    },
-    {
-      command: 'npx firebase emulators:start --project=demo-milk',
-      port: 8080,
-      reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000,
-    }
-  ],
+  webServer: {
+    command: 'npm run start',
+    port: 3000,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
 });
