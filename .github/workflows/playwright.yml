@@ -36,8 +36,8 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
       
-    - name: Install Firebase Tools & Wait-On
-      run: npm install -g firebase-tools wait-on
+    - name: Install Firebase Tools & Cross-Env
+      run: npm install -g firebase-tools cross-env
 
     - name: Build Next.js App
       run: npm run build
